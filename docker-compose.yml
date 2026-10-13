@@ -1,0 +1,36 @@
+# One command runs the whole stack:  docker compose up --build
+# UI: http://localhost:8080   API: http://localhost:3000   Metrics: http://localhost:3000/metrics
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: talentflow
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/talentflow
+      # Optional: any OpenAI-compatible endpoint (OpenAI, vLLM, Ollama). Leave empty for keyword scoring.
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    ports: ["3000:3000"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    ports: ["8080:80"]
+    depends_on: [api]
+
+volumes:
+  pgdata:
