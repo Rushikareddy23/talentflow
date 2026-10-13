@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/api.test.ts","./src/api.ts","./src/main.tsx","./src/useBoard.test.ts","./src/useBoard.ts","./src/components/Board.tsx","./src/components/CandidateCard.tsx","./src/components/CandidateDrawer.tsx","./src/components/Modal.tsx","./src/components/NewCandidateForm.tsx","./src/components/NewJobForm.tsx"],"version":"5.9.3"}
