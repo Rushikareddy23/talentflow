@@ -11,7 +11,7 @@ export const LLM_CLIENT = Symbol('LLM_CLIENT');
 /**
  * Scores a resume against a job.
  * Tries the LLM up to `maxAttempts` times (timeouts, HTTP errors and malformed JSON are all retryable),
- * then falls back to the deterministic keyword scorer, so scoring never fails outright.
+ * then falls back to the deterministic keyword scorer, so an LLM failure doesn't block scoring.
  * The result records which method produced it.
  */
 @Injectable()

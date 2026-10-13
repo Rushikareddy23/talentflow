@@ -35,6 +35,18 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm run test:all
+      - name: Query benchmark (400K rows)
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/talentflow_test
+          BENCH_ROWS: 400000
+        run: |
+          {
+            echo '### Query benchmark'
+            echo "Runner: $(nproc) vCPU, $(free -g | awk '/Mem/{print $2}') GB RAM, $(psql --version 2>/dev/null || echo 'PostgreSQL 16 service')"
+            echo '```'
+            npm run --silent bench
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
   web:
     runs-on: ubuntu-latest

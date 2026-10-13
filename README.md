@@ -1,5 +1,7 @@
 # TalentFlow
 
+[![CI](https://github.com/Rushikareddy23/talentflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Rushikareddy23/talentflow/actions/workflows/ci.yml)
+
 A candidate pipeline tracker with AI resume scoring. Recruiters create a job with its required skills,
 add candidates, and an LLM scores each resume against the job with a short explanation. Candidates move
 through a Kanban board (Applied → Screening → Interview → Offer → Hired / Rejected).
@@ -13,7 +15,7 @@ through a Kanban board (Applied → Screening → Interview → Offer → Hired 
 - **REST API in NestJS** for jobs, candidates, stage moves, scoring and an audit history.
 - **AI resume scoring** through any OpenAI-compatible endpoint (OpenAI, a self-hosted vLLM server, Ollama).
   The model must return strict JSON, which is validated with zod. Timeouts, HTTP errors and malformed replies are retried,
-  then fall back to a deterministic keyword scorer, so scoring never fails outright.
+  then fall back to a deterministic keyword scorer when the LLM fails, so an LLM outage doesn't block scoring.
 - **Kanban board in React**: drag and drop between stages, score badges, matched and missing skills, history timeline.
 - **Safe concurrent edits**: optimistic locking with a `version` column. If two recruiters move the same
   candidate at once, one wins and the other gets `409 Conflict`.
@@ -26,7 +28,7 @@ through a Kanban board (Applied → Screening → Interview → Offer → Hired 
 Benchmark (`npm run bench` in `api/`) on 400,000 candidates (100,000 in the measured job and stage),
 median of 25 runs of server-side execution time (`EXPLAIN ANALYZE`):
 
-| Query | Without index | With `candidates_board_idx` |
+| Query (run 1) | Without index | With `candidates_board_idx` |
 |---|---|---|
 | First page of a stage, best score first | 67.8 ms (Seq Scan + Sort) | **0.053 ms** (Index Scan) |
 | Page 400 using `OFFSET` | 91.1 ms | 10.6 ms |
@@ -36,6 +38,8 @@ The index is `(job_id, stage, COALESCE(score, -1), id)`. It matches the query's 
 so Postgres reads only the 25 rows it returns instead of sorting the whole stage. Keyset pagination stays flat
 however deep you page, while `OFFSET` must read and discard every earlier row. Numbers vary by machine. Run the
 benchmark yourself against a scratch database.
+Full output of two local runs, with machine and database details, is in [docs/benchmark.md](docs/benchmark.md),
+and CI reruns the benchmark on every push (see the job summary of any [CI run](https://github.com/Rushikareddy23/talentflow/actions/workflows/ci.yml)).
 
 ## Architecture
 
@@ -92,6 +96,21 @@ and reports failures instead of failing silently.
 **Plain SQL with the `pg` driver instead of an ORM.** The important queries (keyset pagination, version-guarded updates)
 are easier to reason about and to `EXPLAIN` as SQL. Migrations run under a Postgres advisory lock, so several
 API instances booting at once can't apply the same migration twice.
+
+## Limitations
+
+This is a portfolio project, not a production system. Known gaps:
+
+- **No authentication or permissions.** Anyone who can reach the API can read and change every job and candidate.
+  A real deployment needs login, roles, and per-company data isolation.
+- **Scoring runs inside the request.** A slow LLM makes `POST /candidates/:id/score` slow; at scale it belongs in a
+  background job queue.
+- **Resumes are pasted as text.** There is no PDF upload or text extraction.
+- **Prompt-injection handling reduces risk but does not prevent it.** The resume is delimited as untrusted input and the
+  output is schema-validated, but a determined injection can still skew a score, so a human makes the decision.
+- **No rate limiting or LLM cost controls.**
+- **Fairness is not measured.** The prompt tells the model to ignore personal characteristics, but there is no bias evaluation.
+- **The Docker setup has not been tested end to end**; the tests run in CI against a PostgreSQL service instead.
 
 ## Running locally
 
