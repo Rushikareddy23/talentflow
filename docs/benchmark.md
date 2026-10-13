@@ -5,7 +5,8 @@
 The index is dropped inside a transaction for the "no index" rows and restored afterwards.
 
 These are **database execution times**, not the time to load the board in a browser.
-Exact numbers vary between runs and machines; the ratios are what stay stable.
+Exact numbers vary between runs and machines, and so do the ratios: across the three recorded runs below,
+keyset vs OFFSET ranged from 128x to 259x. Treat these as measured results for this setup, not guarantees.
 CI reruns this benchmark on every push and prints the output in the run's job summary.
 
 ## Setup
